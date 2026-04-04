@@ -706,10 +706,13 @@ if (reportsPayloadNode && reportsRootNode) {
     const [dropTarget, setDropTarget] = React.useState({ key: "", position: "before" });
     const [shownResultsSearch, setShownResultsSearch] = React.useState("");
     const [sortState, setSortState] = React.useState({ key: "", direction: "" });
+    const [columnWidths, setColumnWidths] = React.useState({});
+    const [resizingColumnKey, setResizingColumnKey] = React.useState("");
     const drawerTimerRef = React.useRef(null);
     const tableWrapRef = React.useRef(null);
     const autoScrollFrameRef = React.useRef(null);
     const dragPointerXRef = React.useRef(null);
+    const resizeStateRef = React.useRef({ key: "", startX: 0, startWidth: 0 });
 
     React.useEffect(() => {
       return () => {
@@ -838,6 +841,7 @@ if (reportsPayloadNode && reportsRootNode) {
       setGradeFilters(nextFilters.grade);
       setShownResultsSearch("");
       setSortState({ key: "", direction: "" });
+      setColumnWidths({});
     };
 
     const resetFilters = () => {
@@ -857,6 +861,57 @@ if (reportsPayloadNode && reportsRootNode) {
         return { key: columnKey, direction: "asc" };
       });
     };
+
+    const onColumnResizeMouseMove = React.useCallback((event) => {
+      const state = resizeStateRef.current;
+      if (!state.key) return;
+      const deltaX = event.clientX - state.startX;
+      const nextWidth = Math.max(140, Math.round(state.startWidth + deltaX));
+      setColumnWidths((current) => {
+        if (current[state.key] === nextWidth) return current;
+        return {
+          ...current,
+          [state.key]: nextWidth,
+        };
+      });
+    }, []);
+
+    const stopColumnResize = React.useCallback(() => {
+      resizeStateRef.current = { key: "", startX: 0, startWidth: 0 };
+      setResizingColumnKey("");
+      document.body.classList.remove("is-column-resizing");
+      window.removeEventListener("mousemove", onColumnResizeMouseMove);
+      window.removeEventListener("mouseup", stopColumnResize);
+    }, [onColumnResizeMouseMove]);
+
+    const startColumnResize = React.useCallback(
+      (event, columnKey) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const headerCell = event.currentTarget.closest("th");
+        const currentWidth = headerCell ? headerCell.getBoundingClientRect().width : Number(columnWidths[columnKey]) || 160;
+        resizeStateRef.current = {
+          key: columnKey,
+          startX: event.clientX,
+          startWidth: Math.max(140, Math.round(currentWidth)),
+        };
+        setResizingColumnKey(columnKey);
+        setDragColumnKey("");
+        setDropTarget({ key: "", position: "before" });
+        document.body.classList.add("is-column-resizing");
+        window.addEventListener("mousemove", onColumnResizeMouseMove);
+        window.addEventListener("mouseup", stopColumnResize);
+      },
+      [columnWidths, onColumnResizeMouseMove, stopColumnResize]
+    );
+
+    React.useEffect(() => {
+      return () => {
+        document.body.classList.remove("is-column-resizing");
+        window.removeEventListener("mousemove", onColumnResizeMouseMove);
+        window.removeEventListener("mouseup", stopColumnResize);
+      };
+    }, [onColumnResizeMouseMove, stopColumnResize]);
 
     const stopDragAutoScroll = React.useCallback(() => {
       if (autoScrollFrameRef.current) {
@@ -910,6 +965,15 @@ if (reportsPayloadNode && reportsRootNode) {
         nextOrder.splice(insertIndex, 0, fromKey);
         return nextOrder;
       });
+    };
+
+    const getColumnWidthStyle = (columnKey) => {
+      const width = columnWidths[columnKey];
+      if (!width) return undefined;
+      return {
+        width: `${width}px`,
+        minWidth: `${width}px`,
+      };
     };
 
     const exportReport = () => {
@@ -1025,6 +1089,7 @@ if (reportsPayloadNode && reportsRootNode) {
                   onChange={(event) => {
                     setSelectedReport(event.target.value);
                     setGeneratedReport("");
+                    setColumnWidths({});
                   }}
                 >
                   {initialData.report_options.map((option) => (
@@ -1128,6 +1193,7 @@ if (reportsPayloadNode && reportsRootNode) {
                             className={`column-drag-head${dragColumnKey === column.key ? " is-dragging" : ""}${
                               dropTarget.key === column.key && dropTarget.position === "before" ? " drop-before" : ""
                             }${dropTarget.key === column.key && dropTarget.position === "after" ? " drop-after" : ""}`}
+                            style={getColumnWidthStyle(column.key)}
                             draggable
                             onDragStart={() => {
                               setDragColumnKey(column.key);
@@ -1186,12 +1252,27 @@ if (reportsPayloadNode && reportsRootNode) {
                                 </button>
                               </div>
                             </div>
+                            <span
+                              className={`column-resize-handle${resizingColumnKey === column.key ? " active" : ""}`}
+                              role="separator"
+                              aria-orientation="vertical"
+                              draggable={false}
+                              onMouseDown={(event) => startColumnResize(event, column.key)}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                              }}
+                              onDragStart={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                              }}
+                            ></span>
                           </th>
                         ))}
                       </tr>
                       <tr className="inline-filter-row">
                         {visibleColumns.map((column) => (
-                          <th key={`${column.key}-filter`}>
+                          <th key={`${column.key}-filter`} style={getColumnWidthStyle(column.key)}>
                             {column.type === "text" ? (
                               <TextFilter
                                 column={column}
@@ -1263,7 +1344,9 @@ if (reportsPayloadNode && reportsRootNode) {
                           return (
                             <tr key={rowId}>
                               {visibleColumns.map((column) => (
-                                <td key={`${rowId}-${column.key}`}>{renderCell(row, column)}</td>
+                                <td key={`${rowId}-${column.key}`} style={getColumnWidthStyle(column.key)}>
+                                  {renderCell(row, column)}
+                                </td>
                               ))}
                             </tr>
                           );

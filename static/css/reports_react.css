@@ -22,6 +22,15 @@ body {
   color: var(--text);
 }
 
+body.is-column-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.is-column-resizing .reports-table thead tr:first-child th {
+  cursor: col-resize;
+}
+
 .reports-shell {
   min-height: 100vh;
   display: grid;
@@ -570,6 +579,7 @@ th {
 .reports-table thead tr:first-child th {
   cursor: grab;
   position: relative;
+  padding-right: 18px;
   transition: background-color 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -618,6 +628,38 @@ th {
   color: #6b8098;
   font-size: 14px;
   letter-spacing: -1px;
+}
+
+.column-resize-handle {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  right: -6px;
+  width: 12px;
+  cursor: col-resize;
+  z-index: 4;
+}
+
+.column-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 50%;
+  width: 2px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: transparent;
+  transition: background-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.reports-table thead tr:first-child th:hover .column-resize-handle::after {
+  background: #c1d3e5;
+}
+
+.column-resize-handle.active::after {
+  background: #2f6ca6;
+  box-shadow: 0 0 0 1px rgba(47, 108, 166, 0.22);
 }
 
 .sort-icon-button {
