@@ -969,6 +969,15 @@ tbody tr:nth-child(2n) {
   opacity: 0.75;
 }
 
+.drawer-option.mandatory {
+  background: #f2f5f9;
+  border: 1px solid #d7e1ec;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  color: #6f8196;
+}
+
 .drawer-option input {
   width: 18px;
   height: 18px;
@@ -979,10 +988,34 @@ tbody tr:nth-child(2n) {
   margin-top: 0;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding-top: 10px;
   border-top: 1px solid #e6edf5;
   background: #fff;
+}
+
+.drawer-tools {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-link-btn {
+  border: 0;
+  background: transparent;
+  color: #1b568d;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.drawer-link-btn:hover {
+  background: #edf5ff;
 }
 
 @media (max-width: 920px) {

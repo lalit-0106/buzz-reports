@@ -634,7 +634,9 @@ if (reportsPayloadNode && reportsRootNode) {
     );
   }
 
-  function ColumnDrawer({ stage, optionalColumns, selectedOptionalKeys, onCancel, onApply }) {
+  function ColumnDrawer({ stage, columns, selectedOptionalKeys, onCancel, onApply }) {
+    const mandatoryColumns = columns.filter((column) => column.mandatory);
+    const optionalColumns = columns.filter((column) => !column.mandatory);
     const [draftSelected, setDraftSelected] = React.useState(selectedOptionalKeys);
     React.useEffect(() => {
       setDraftSelected(selectedOptionalKeys);
@@ -646,6 +648,8 @@ if (reportsPayloadNode && reportsRootNode) {
       setDraftSelected((currentSelected) =>
         currentSelected.includes(key) ? currentSelected.filter((value) => value !== key) : [...currentSelected, key]
       );
+    const selectAllOptional = () => setDraftSelected(optionalColumns.map((column) => column.key));
+    const clearAllOptional = () => setDraftSelected([]);
 
     return (
       <>
@@ -658,6 +662,12 @@ if (reportsPayloadNode && reportsRootNode) {
             </button>
           </div>
           <div className="drawer-section">
+            {mandatoryColumns.map((column) => (
+              <label className="drawer-option disabled mandatory" key={column.key}>
+                <input type="checkbox" checked={true} disabled />
+                <span>{column.label}</span>
+              </label>
+            ))}
             {optionalColumns.map((column) => (
               <label className="drawer-option" key={column.key}>
                 <input type="checkbox" checked={draftSelected.includes(column.key)} onChange={() => toggleSelection(column.key)} />
@@ -666,6 +676,14 @@ if (reportsPayloadNode && reportsRootNode) {
             ))}
           </div>
           <div className="drawer-actions">
+            <div className="drawer-tools">
+              <button type="button" className="drawer-link-btn" onClick={selectAllOptional}>
+                Select All
+              </button>
+              <button type="button" className="drawer-link-btn" onClick={clearAllOptional}>
+                Clear All
+              </button>
+            </div>
             <button type="button" className="btn-secondary" onClick={onCancel}>
               Cancel
             </button>
@@ -737,7 +755,6 @@ if (reportsPayloadNode && reportsRootNode) {
     const activeConfig = getReportConfig(activeReportName);
     const activeColumns = activeConfig.columns;
     const activeRows = activeConfig.rows || [];
-    const activeOptionalColumns = activeColumns.filter((column) => !column.mandatory);
     const reportDescription = (REPORT_CONFIGS[selectedReport] && REPORT_CONFIGS[selectedReport].description) || "Description is not available for this report.";
 
     const orderedColumns = columnOrder.map((key) => activeColumns.find((column) => column.key === key)).filter(Boolean);
@@ -1264,7 +1281,7 @@ if (reportsPayloadNode && reportsRootNode) {
 
         <ColumnDrawer
           stage={drawerStage}
-          optionalColumns={activeOptionalColumns}
+          columns={activeColumns}
           selectedOptionalKeys={optionalSelectedKeys}
           onCancel={closeDrawer}
           onApply={(selectedKeys) => {
