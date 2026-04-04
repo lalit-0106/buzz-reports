@@ -697,6 +697,7 @@ if (reportsPayloadNode && reportsRootNode) {
   }
 
   function ReportsApp({ initialData }) {
+    const MIN_RESIZE_WIDTH = 64;
     const [selectedReport, setSelectedReport] = React.useState(initialData.selected_report);
     const [generatedReport, setGeneratedReport] = React.useState("");
     const [gapThresholdValue, setGapThresholdValue] = React.useState("1");
@@ -866,7 +867,7 @@ if (reportsPayloadNode && reportsRootNode) {
       const state = resizeStateRef.current;
       if (!state.key) return;
       const deltaX = event.clientX - state.startX;
-      const nextWidth = Math.max(140, Math.round(state.startWidth + deltaX));
+      const nextWidth = Math.max(MIN_RESIZE_WIDTH, Math.round(state.startWidth + deltaX));
       setColumnWidths((current) => {
         if (current[state.key] === nextWidth) return current;
         return {
@@ -893,7 +894,7 @@ if (reportsPayloadNode && reportsRootNode) {
         resizeStateRef.current = {
           key: columnKey,
           startX: event.clientX,
-          startWidth: Math.max(140, Math.round(currentWidth)),
+          startWidth: Math.max(MIN_RESIZE_WIDTH, Math.round(currentWidth)),
         };
         setResizingColumnKey(columnKey);
         setDragColumnKey("");
@@ -973,6 +974,7 @@ if (reportsPayloadNode && reportsRootNode) {
       return {
         width: `${width}px`,
         minWidth: `${width}px`,
+        maxWidth: `${width}px`,
       };
     };
 
@@ -1030,8 +1032,9 @@ if (reportsPayloadNode && reportsRootNode) {
       if (column.multiValue) {
         const values = Array.isArray(row[column.key]) ? row[column.key] : [];
         if (values.length === 0) return "-";
+        const joinedValues = values.join(", ");
         return (
-          <div className="multi-value-wrap">
+          <div className="multi-value-wrap" title={joinedValues}>
             {values.map((value, index) => (
               <span className="value-pill" key={`${column.key}-${index}-${value}`}>
                 {value}
@@ -1044,12 +1047,16 @@ if (reportsPayloadNode && reportsRootNode) {
       if (column.link) {
         const href = row[`${column.key}_url`] || "#";
         return (
-          <a href={href} target="_blank" rel="noreferrer noopener" className="cell-link">
+          <a href={href} target="_blank" rel="noreferrer noopener" className="cell-link" title={displayValue}>
             {displayValue}
           </a>
         );
       }
-      return displayValue;
+      return (
+        <span className="cell-text" title={displayValue}>
+          {displayValue}
+        </span>
+      );
     };
 
     const supportedReport = Boolean(REPORT_CONFIGS[generatedReport]);
@@ -1228,7 +1235,9 @@ if (reportsPayloadNode && reportsRootNode) {
                             <div className="header-drag-wrap">
                               <span className="header-drag-icon">::</span>
                               <div className="header-label-wrap">
-                                <span>{column.label}</span>
+                                <span className="header-title" title={column.label}>
+                                  {column.label}
+                                </span>
                                 <button
                                   type="button"
                                   className={`sort-icon-button${sortState.key === column.key ? ` active ${sortState.direction}` : ""}`}

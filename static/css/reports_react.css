@@ -616,12 +616,24 @@ th {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .header-label-wrap {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.header-title {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-drag-icon {
@@ -755,6 +767,10 @@ tbody tr:nth-child(2n) {
   color: #0e4d89;
   text-decoration: none;
   font-weight: 600;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cell-link:hover {
@@ -763,8 +779,10 @@ tbody tr:nth-child(2n) {
 
 .multi-value-wrap {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .value-pill {
@@ -778,11 +796,23 @@ tbody tr:nth-child(2n) {
   font-weight: 600;
   padding: 3px 8px;
   line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+}
+
+.cell-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .text-filter-wrap {
   position: relative;
-  min-width: 160px;
+  min-width: 0;
 }
 
 .inline-filter-button {
@@ -797,6 +827,9 @@ tbody tr:nth-child(2n) {
   cursor: pointer;
   position: relative;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .inline-filter-button::after {
@@ -880,7 +913,8 @@ tbody tr:nth-child(2n) {
 .date-filter {
   display: grid;
   gap: 6px;
-  min-width: 165px;
+  min-width: 0;
+  width: 100%;
 }
 
 .inline-operator,
@@ -920,6 +954,12 @@ tbody tr:nth-child(2n) {
 .date-range {
   display: grid;
   gap: 6px;
+}
+
+.reports-table tbody td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .empty-panel {
