@@ -54,7 +54,7 @@ if (reportsPayloadNode && reportsRootNode) {
     { key: "status", label: "Status", type: "text", mandatory: true, defaultVisible: true },
     { key: "project_tech_stack", label: "Project Tech Stack", type: "text", mandatory: true, defaultVisible: true, multiValue: true },
     { key: "project_status", label: "Project Status", type: "text", mandatory: false, defaultVisible: true },
-    { key: "sow_status", label: "SOW Status", type: "text", mandatory: false, defaultVisible: false },
+    { key: "account_owner", label: "Account Owner", type: "text", mandatory: false, defaultVisible: true },
     { key: "project_manager", label: "Project Manager", type: "text", mandatory: false, defaultVisible: false },
     { key: "project_category", label: "Project Category", type: "text", mandatory: false, defaultVisible: false },
     { key: "start_date", label: "Start Date", type: "date", mandatory: false, defaultVisible: false },
@@ -98,6 +98,18 @@ if (reportsPayloadNode && reportsRootNode) {
     { key: "expected_end_date", label: "Expected End Date", type: "date", mandatory: false, defaultVisible: false },
   ];
 
+  function normalizeTechStackStatus(statusValue) {
+    return String(statusValue || "").trim().toLowerCase() === "closed" ? "Closed" : "Active";
+  }
+
+  function normalizeTechStackRows(rows) {
+    return (rows || []).map((row) => ({
+      ...row,
+      status: normalizeTechStackStatus(row.status),
+      account_owner: row.account_owner || row.accountOwner || "NA",
+    }));
+  }
+
   const REPORT_CONFIGS = {
     "Tenure Report": {
       columns: TENURE_COLUMNS,
@@ -111,8 +123,8 @@ if (reportsPayloadNode && reportsRootNode) {
     },
     "Tech Stack Report": {
       columns: TECH_STACK_COLUMNS,
-      rows: payload.tech_stack_rows || [],
-      description: "Shows project technology stacks with status, category, SOW, and timeline metadata.",
+      rows: normalizeTechStackRows(payload.tech_stack_rows || []),
+      description: "Shows project technology stacks with status, ownership, category, and timeline metadata.",
     },
     "Upcoming Roll-off Report": {
       columns: UPCOMING_ROLLOFF_COLUMNS,
