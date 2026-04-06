@@ -142,10 +142,25 @@ if (reportsPayloadNode && reportsRootNode) {
     }));
   }
 
+  function normalizeTenureDurationToDays(durationValue) {
+    const parsed = Number(durationValue);
+    if (Number.isNaN(parsed)) return durationValue;
+    if (parsed <= 60) return Math.round(parsed * 30);
+    return Math.round(parsed);
+  }
+
+  function normalizeTenureRows(rows) {
+    return (rows || []).map((row) => ({
+      ...row,
+      __report_name: "Tenure Report",
+      duration: normalizeTenureDurationToDays(row.duration),
+    }));
+  }
+
   const REPORT_CONFIGS = {
     "Tenure Report": {
       columns: TENURE_COLUMNS,
-      rows: payload.rows || [],
+      rows: normalizeTenureRows(payload.rows || []),
       description: "Shows employee tenure details with inline filters, column customization, and export.",
     },
     "Resource Request Report": {
@@ -274,6 +289,11 @@ if (reportsPayloadNode && reportsRootNode) {
   }
 
   function formatCellValue(row, column) {
+    if (column.key === "duration" && row.__report_name === "Tenure Report") {
+      const value = row[column.key];
+      if (value === null || value === undefined || value === "") return "";
+      return `${value} days`;
+    }
     if (column.type === "date") return toDisplayDate(row[column.key]);
     if (column.multiValue) {
       const values = Array.isArray(row[column.key]) ? row[column.key] : [];
@@ -543,10 +563,11 @@ if (reportsPayloadNode && reportsRootNode) {
     );
   }
 
-  function NumberFilter({ value, onChange, columnKey }) {
+  function NumberFilter({ value, onChange, columnKey, useDurationUnit }) {
     const isDurationColumn = columnKey === "duration";
-    const showUnitDropdown = isDurationColumn && value.operator !== "";
-    const showValueInput = value.operator !== "" && (!isDurationColumn || value.unit !== "Any");
+    const shouldShowDurationUnit = isDurationColumn && useDurationUnit;
+    const showUnitDropdown = shouldShowDurationUnit && value.operator !== "";
+    const showValueInput = value.operator !== "" && (!shouldShowDurationUnit || value.unit !== "Any");
     return (
       <div className="number-filter">
         <select
@@ -557,7 +578,7 @@ if (reportsPayloadNode && reportsRootNode) {
               ...value,
               operator: event.target.value,
               value: event.target.value === "" ? "" : value.value,
-              unit: event.target.value === "" ? "Any" : value.unit,
+              unit: event.target.value === "" || !shouldShowDurationUnit ? "Any" : value.unit,
             })
           }
         >
@@ -835,7 +856,7 @@ if (reportsPayloadNode && reportsRootNode) {
 
       const numberMatch = visibleNumberColumns.every((column) => {
         const filter = numberFilters[column.key] || { operator: "", value: "", unit: "Any" };
-        if (column.key === "duration") {
+        if (column.key === "duration" && activeReportName !== "Tenure Report") {
           if (!filter.operator || filter.unit === "Any") return true;
           return compareNumber(row[column.key], filter.operator, normalizeDurationToMonths(filter.value, filter.unit));
         }
@@ -1358,6 +1379,7 @@ if (reportsPayloadNode && reportsRootNode) {
                             {column.type === "number" ? (
                               <NumberFilter
                                 columnKey={column.key}
+                                useDurationUnit={!(activeReportName === "Tenure Report" && column.key === "duration")}
                                 value={numberFilters[column.key] || { operator: "", value: "", unit: "Any" }}
                                 onChange={(value) =>
                                   setNumberFilters((current) => ({
