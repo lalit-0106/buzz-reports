@@ -710,6 +710,7 @@ if (reportsPayloadNode && reportsRootNode) {
 
   function ReportsApp({ initialData }) {
     const MIN_RESIZE_WIDTH = 64;
+    const MAX_MULTI_VALUE_PILLS = 6;
     const [selectedReport, setSelectedReport] = React.useState(initialData.selected_report);
     const [generatedReport, setGeneratedReport] = React.useState("");
     const [gapThresholdValue, setGapThresholdValue] = React.useState("1");
@@ -1044,14 +1045,23 @@ if (reportsPayloadNode && reportsRootNode) {
       if (column.multiValue) {
         const values = Array.isArray(row[column.key]) ? row[column.key] : [];
         if (values.length === 0) return "-";
-        const joinedValues = values.join(", ");
+        const normalizedValues = values.filter(Boolean).map((value) => String(value));
+        if (normalizedValues.length === 0) return "-";
+        const visibleValues = normalizedValues.slice(0, MAX_MULTI_VALUE_PILLS);
+        const hiddenValues = normalizedValues.slice(MAX_MULTI_VALUE_PILLS);
+        const joinedValues = normalizedValues.join(", ");
         return (
           <div className="multi-value-wrap" title={joinedValues}>
-            {values.map((value, index) => (
+            {visibleValues.map((value, index) => (
               <span className="value-pill" key={`${column.key}-${index}-${value}`}>
                 {value}
               </span>
             ))}
+            {hiddenValues.length > 0 ? (
+              <span className="value-pill value-pill-more" title={hiddenValues.join(", ")}>
+                +{hiddenValues.length} more
+              </span>
+            ) : null}
           </div>
         );
       }

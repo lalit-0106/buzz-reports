@@ -803,6 +803,12 @@ tbody tr:nth-child(2n) {
   flex: 0 1 auto;
 }
 
+.value-pill-more {
+  border-color: #b8cde6;
+  background: #eaf3ff;
+  color: #1f4f80;
+}
+
 .cell-text {
   display: block;
   overflow: hidden;
