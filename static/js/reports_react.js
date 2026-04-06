@@ -102,11 +102,43 @@ if (reportsPayloadNode && reportsRootNode) {
     return String(statusValue || "").trim().toLowerCase() === "closed" ? "Closed" : "Active";
   }
 
+  const DEFAULT_TECH_STACK_POOL = [
+    "Java",
+    "Spring Boot",
+    "Microservices",
+    "Kafka",
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "PostgreSQL",
+    "Redis",
+    "REST API",
+  ];
+
+  function normalizeTechStackValues(rawValues) {
+    const sourceValues = Array.isArray(rawValues)
+      ? rawValues
+      : String(rawValues || "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean);
+    const uniqueValues = [];
+    sourceValues.forEach((value) => {
+      if (!uniqueValues.includes(value)) uniqueValues.push(value);
+    });
+    DEFAULT_TECH_STACK_POOL.forEach((value) => {
+      if (uniqueValues.length >= 8) return;
+      if (!uniqueValues.includes(value)) uniqueValues.push(value);
+    });
+    return uniqueValues;
+  }
+
   function normalizeTechStackRows(rows) {
     return (rows || []).map((row) => ({
       ...row,
       status: normalizeTechStackStatus(row.status),
       account_owner: row.account_owner || row.accountOwner || "NA",
+      project_tech_stack: normalizeTechStackValues(row.project_tech_stack),
     }));
   }
 
