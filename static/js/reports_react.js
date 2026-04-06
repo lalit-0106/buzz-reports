@@ -45,14 +45,14 @@ if (reportsPayloadNode && reportsRootNode) {
     { key: "shift_timings", label: "Shift Timings", type: "text", mandatory: false, defaultVisible: false },
     { key: "duration", label: "Duration", type: "number", mandatory: false, defaultVisible: false },
     { key: "start_date", label: "Start Date", type: "date", mandatory: false, defaultVisible: false },
-    { key: "skills", label: "Skills", type: "text", mandatory: false, defaultVisible: false, multiValue: true },
+    { key: "skills", label: "Skills", type: "text", mandatory: false, defaultVisible: false, multiValue: true, sortable: false },
   ];
 
   const TECH_STACK_COLUMNS = [
     { key: "project_name", label: "Project Name", type: "text", mandatory: true, defaultVisible: true, link: true },
     { key: "account_name", label: "Account Name", type: "text", mandatory: true, defaultVisible: true, link: true },
     { key: "status", label: "Status", type: "text", mandatory: true, defaultVisible: true },
-    { key: "project_tech_stack", label: "Project Tech Stack", type: "text", mandatory: true, defaultVisible: true, multiValue: true },
+    { key: "project_tech_stack", label: "Project Tech Stack", type: "text", mandatory: true, defaultVisible: true, multiValue: true, sortable: false },
     { key: "project_status", label: "Project Status", type: "text", mandatory: false, defaultVisible: true },
     { key: "account_owner", label: "Account Owner", type: "text", mandatory: false, defaultVisible: true },
     { key: "project_manager", label: "Project Manager", type: "text", mandatory: false, defaultVisible: false },
@@ -808,14 +808,16 @@ if (reportsPayloadNode && reportsRootNode) {
 
     const orderedColumns = columnOrder.map((key) => activeColumns.find((column) => column.key === key)).filter(Boolean);
     const visibleColumns = orderedColumns.filter((column) => column.mandatory || optionalSelectedKeys.includes(column.key));
+    const isColumnSortable = React.useCallback((column) => column && column.sortable !== false, []);
 
     React.useEffect(() => {
       if (!sortState.key) return;
       const isSortColumnVisible = visibleColumns.some((column) => column.key === sortState.key);
-      if (!isSortColumnVisible) {
+      const activeSortColumn = visibleColumns.find((column) => column.key === sortState.key);
+      if (!isSortColumnVisible || !isColumnSortable(activeSortColumn)) {
         setSortState({ key: "", direction: "" });
       }
-    }, [sortState.key, visibleColumns]);
+    }, [isColumnSortable, sortState.key, visibleColumns]);
 
     const filteredRows = activeRows.filter((row) => {
       const visibleTextColumns = visibleColumns.filter((column) => column.type === "text");
@@ -900,6 +902,8 @@ if (reportsPayloadNode && reportsRootNode) {
     };
 
     const toggleSort = (columnKey) => {
+      const column = visibleColumns.find((item) => item.key === columnKey);
+      if (!isColumnSortable(column)) return;
       setSortState((current) => {
         if (current.key !== columnKey) return { key: columnKey, direction: "asc" };
         if (current.direction === "asc") return { key: columnKey, direction: "desc" };
@@ -1292,7 +1296,8 @@ if (reportsPayloadNode && reportsRootNode) {
                                 <span className="header-title" title={column.label}>
                                   {column.label}
                                 </span>
-                                <button
+                                {isColumnSortable(column) ? (
+                                  <button
                                   type="button"
                                   className={`sort-icon-button${sortState.key === column.key ? ` active ${sortState.direction}` : ""}`}
                                   aria-label={`Sort ${column.label}`}
@@ -1312,7 +1317,8 @@ if (reportsPayloadNode && reportsRootNode) {
                                 >
                                   <span className="sort-icon sort-icon-up">▲</span>
                                   <span className="sort-icon sort-icon-down">▼</span>
-                                </button>
+                                  </button>
+                                ) : null}
                               </div>
                             </div>
                             <span
