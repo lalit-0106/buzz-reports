@@ -1002,6 +1002,22 @@ if (reportsPayloadNode && reportsRootNode) {
     });
 
     const shownRows = React.useMemo(() => sortRowsByColumn(searchedRows, visibleColumns, sortState), [searchedRows, sortState, visibleColumns]);
+    const prioritizedShownRows = React.useMemo(() => {
+      if (activeReportName !== "Tenure Report") return shownRows;
+      const talentPoolRows = [];
+      const regularRows = [];
+      shownRows.forEach((row) => {
+        const isTalentPoolRecord =
+          String(row.status || "").trim().toLowerCase() === "active_na" ||
+          String(row.project || "").trim().toLowerCase() === "talent pool";
+        if (isTalentPoolRecord) {
+          talentPoolRows.push(row);
+        } else {
+          regularRows.push(row);
+        }
+      });
+      return [...talentPoolRows, ...regularRows];
+    }, [activeReportName, shownRows]);
 
     const hasActiveFilters = React.useMemo(() => {
       const hasText = Object.values(textFilters).some((values) => (values || []).length > 0);
@@ -1168,7 +1184,7 @@ if (reportsPayloadNode && reportsRootNode) {
       const visibleKeySet = new Set(visibleColumns.map((column) => column.key));
       const exportRows = [
         exportColumns.map((column) => column.label),
-        ...shownRows.map((row) => exportColumns.map((column) => toExcelSafeValue(formatCellValue(row, column)))),
+        ...prioritizedShownRows.map((row) => exportColumns.map((column) => toExcelSafeValue(formatCellValue(row, column)))),
       ];
       const exportFileName = `${(generatedReport || "report").toLowerCase().replaceAll(" ", "-")}.xlsx`;
 
@@ -1195,7 +1211,7 @@ if (reportsPayloadNode && reportsRootNode) {
       }
 
       const fallbackHeader = exportColumns.map((column) => `<th>${column.label}</th>`).join("");
-      const fallbackRows = shownRows
+      const fallbackRows = prioritizedShownRows
         .map((row) => {
           const cells = exportColumns.map((column) => `<td>${toExcelSafeValue(formatCellValue(row, column))}</td>`).join("");
           return `<tr>${cells}</tr>`;
@@ -1351,7 +1367,7 @@ if (reportsPayloadNode && reportsRootNode) {
                 <div className="result-head">
                   <div className="result-title" aria-live="polite">
                     <span className="result-kicker">Showing</span>
-                    <span className="result-count-badge">{shownRows.length}</span>
+                    <span className="result-count-badge">{prioritizedShownRows.length}</span>
                     <span className="result-kicker">records</span>
                   </div>
                   <div className="result-actions">
@@ -1538,14 +1554,14 @@ if (reportsPayloadNode && reportsRootNode) {
                       </tr>
                     </thead>
                     <tbody>
-                      {shownRows.length === 0 ? (
+                      {prioritizedShownRows.length === 0 ? (
                         <tr>
                           <td className="no-data-cell" colSpan={Math.max(visibleColumns.length, 1)}>
                             No data found for selected filters
                           </td>
                         </tr>
                       ) : (
-                        shownRows.map((row, rowIndex) => {
+                        prioritizedShownRows.map((row, rowIndex) => {
                           const rowId =
                             row.id ||
                             row.rr_id ||
