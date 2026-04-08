@@ -16,6 +16,7 @@ if (reportsPayloadNode && reportsRootNode) {
     { key: "practice", label: "Practice", type: "text", mandatory: false, defaultVisible: true },
     { key: "grade", label: "Grade", type: "text", mandatory: false, defaultVisible: true },
     { key: "utilization_percentage", label: "Utilization Percentage", type: "number", mandatory: false, defaultVisible: true },
+    { key: "talent_pool_percentage", label: "Talent Pool %", type: "number", mandatory: false, defaultVisible: true },
     { key: "start_date", label: "Start Date", type: "date", mandatory: false, defaultVisible: true },
     { key: "allocation_category", label: "Allocation Category", type: "text", mandatory: false, defaultVisible: false },
     { key: "shadow_type", label: "Shadow Type", type: "text", mandatory: false, defaultVisible: false },
@@ -149,11 +150,122 @@ if (reportsPayloadNode && reportsRootNode) {
     return Math.round(parsed);
   }
 
+  function getDaysSinceIsoDate(isoDate) {
+    const parsedDate = parseIsoDate(isoDate);
+    if (!parsedDate) return "";
+    const now = new Date();
+    const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const msDiff = todayUtc.getTime() - parsedDate.getTime();
+    if (msDiff < 0) return 0;
+    return Math.floor(msDiff / (1000 * 60 * 60 * 24));
+  }
+
+  function toNumericOrEmpty(value) {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? "" : parsed;
+  }
+
+  const TENURE_ACTIVE_NA_FIXED_FIELDS = [
+    "project",
+    "project_type",
+    "project_manager",
+    "role",
+    "account",
+    "practice",
+    "start_date",
+    "allocation_category",
+    "shadow_type",
+    "shadow_of",
+    "shadow_name",
+    "billing_hours",
+    "lead",
+    "shift_timings",
+    "account_owner",
+    "expected_end_date",
+  ];
+
+  function normalizeActiveNaTenureRow(row) {
+    const normalizedRow = {
+      ...row,
+      status: "Active_NA",
+      duration: row.latest_roll_off_date ? getDaysSinceIsoDate(row.latest_roll_off_date) : normalizeTenureDurationToDays(row.duration),
+      utilization_percentage: toNumericOrEmpty(row.utilization_percentage),
+      talent_pool_percentage:
+        toNumericOrEmpty(row.talent_pool_percentage) === ""
+          ? Math.max(0, 100 - (toNumericOrEmpty(row.utilization_percentage) || 0))
+          : toNumericOrEmpty(row.talent_pool_percentage),
+    };
+    TENURE_ACTIVE_NA_FIXED_FIELDS.forEach((key) => {
+      normalizedRow[key] = "Talent Pool";
+    });
+    return normalizedRow;
+  }
+
+  function buildSampleTalentPoolRows(requiredCount, presentCount) {
+    const sampleSeed = [
+      {
+        employee_id: "0091",
+        employee_name: "Arjun Talent",
+        status: "Active_NA",
+        duration: "",
+        grade: "G3",
+        utilization_percentage: 0,
+        talent_pool_percentage: 100,
+        latest_roll_off_date: "2026-01-15",
+      },
+      {
+        employee_id: "0092",
+        employee_name: "Bhavana Pool",
+        status: "Active_NA",
+        duration: "",
+        grade: "G4",
+        utilization_percentage: 20,
+        talent_pool_percentage: 80,
+        latest_roll_off_date: "2025-12-20",
+      },
+      {
+        employee_id: "0093",
+        employee_name: "Charan NA",
+        status: "Active_NA",
+        duration: "",
+        grade: "G2",
+        utilization_percentage: 10,
+        talent_pool_percentage: 90,
+        latest_roll_off_date: "2026-02-01",
+      },
+    ];
+    if (presentCount >= requiredCount) return [];
+    return sampleSeed.slice(0, requiredCount - presentCount).map((row) => normalizeActiveNaTenureRow(row));
+  }
+
   function normalizeTenureRows(rows) {
-    return (rows || []).map((row) => ({
+    const eligibleRows = (rows || []).filter((row) => {
+      const status = String(row.status || "").trim().toLowerCase();
+      return status === "active" || status === "active_na";
+    });
+
+    const transformed = eligibleRows.map((row) => {
+      const status = String(row.status || "").trim().toLowerCase();
+      if (status === "active_na") return normalizeActiveNaTenureRow(row);
+      const utilization = toNumericOrEmpty(row.utilization_percentage);
+      return {
+        ...row,
+        status: "Active",
+        duration: normalizeTenureDurationToDays(row.duration),
+        utilization_percentage: utilization,
+        talent_pool_percentage:
+          toNumericOrEmpty(row.talent_pool_percentage) === ""
+            ? Math.max(0, 100 - (utilization || 0))
+            : toNumericOrEmpty(row.talent_pool_percentage),
+      };
+    });
+
+    const activeNaCount = transformed.filter((row) => String(row.status).toLowerCase() === "active_na").length;
+    const sampleTalentPoolRows = buildSampleTalentPoolRows(3, activeNaCount);
+
+    return [...transformed, ...sampleTalentPoolRows].map((row) => ({
       ...row,
       __report_name: "Tenure Report",
-      duration: normalizeTenureDurationToDays(row.duration),
     }));
   }
 
@@ -200,7 +312,8 @@ if (reportsPayloadNode && reportsRootNode) {
     if (!operator || rightValue === "") return true;
     const leftNum = Number(leftValue);
     const rightNum = Number(rightValue);
-    if (Number.isNaN(leftNum) || Number.isNaN(rightNum)) return true;
+    if (Number.isNaN(rightNum)) return true;
+    if (Number.isNaN(leftNum)) return false;
     if (operator === "=") return leftNum === rightNum;
     if (operator === "!=") return leftNum !== rightNum;
     if (operator === ">") return leftNum > rightNum;
@@ -221,7 +334,8 @@ if (reportsPayloadNode && reportsRootNode) {
 
   function compareDate(leftDate, filter) {
     if (!filter.operator) return true;
-    if (!leftDate) return false;
+    const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (!leftDate || !isoPattern.test(String(leftDate))) return false;
     if (filter.operator === "between") {
       if (!filter.start || !filter.end) return true;
       return leftDate >= filter.start && leftDate <= filter.end;
@@ -766,8 +880,8 @@ if (reportsPayloadNode && reportsRootNode) {
     const MAX_MULTI_VALUE_PILLS = 6;
     const [selectedReport, setSelectedReport] = React.useState(initialData.selected_report);
     const [generatedReport, setGeneratedReport] = React.useState("");
-    const [gapThresholdValue, setGapThresholdValue] = React.useState("1");
-    const [gapThresholdUnit, setGapThresholdUnit] = React.useState("Months");
+    const [gapThresholdValue, setGapThresholdValue] = React.useState("0");
+    const [gapThresholdUnit, setGapThresholdUnit] = React.useState("Days");
     const [drawerStage, setDrawerStage] = React.useState("closed");
     const [dragColumnKey, setDragColumnKey] = React.useState("");
     const [dropTarget, setDropTarget] = React.useState({ key: "", position: "before" });
@@ -1185,7 +1299,12 @@ if (reportsPayloadNode && reportsRootNode) {
                   ))}
                 </select>
               </div>
-              <button type="button" className="btn-primary" disabled={!selectedReport} onClick={handleGenerate}>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!selectedReport || (selectedReport === "Tenure Report" && gapThresholdValue === "")}
+                onClick={handleGenerate}
+              >
                 Generate
               </button>
               <div className="report-info-tooltip-wrap">
@@ -1206,6 +1325,7 @@ if (reportsPayloadNode && reportsRootNode) {
                     className="field gap-threshold-input"
                     type="number"
                     min="0"
+                    required
                     placeholder="Enter value"
                     value={gapThresholdValue}
                     onChange={(event) => setGapThresholdValue(event.target.value)}
